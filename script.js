@@ -7,6 +7,13 @@ let currentPage = 1;
 const pokemonListEl = document.getElementById('pokemon-list');
 const paginationEl = document.getElementById('pagination');
 const pokemonDetailEl = document.getElementById('pokemon-detail');
+const searchInputEl = document.getElementById('search-input');
+const searchBtnEl = document.getElementById('search-btn');
+const clearSearchBtnEl = document.getElementById('clear-search-btn');
+
+// Search state
+let isSearchMode = false;
+let searchResults = [];
 
 // Fetch Pokemon list
 async function fetchPokemonList(offset = 0) {
@@ -145,6 +152,11 @@ function displayPagination(totalCount, currentOffset) {
 
 // Go to specific page
 async function goToPage(page) {
+    // Don't paginate if in search mode
+    if (isSearchMode) {
+        return;
+    }
+    
     const offset = (page - 1) * POKEMON_PER_PAGE;
     currentOffset = offset;
     currentPage = page;
@@ -166,6 +178,94 @@ async function goToPage(page) {
 
 // Make goToPage available globally
 window.goToPage = goToPage;
+
+// Search Pokemon
+async function searchPokemon(searchTerm) {
+    if (!searchTerm || searchTerm.trim() === '') {
+        return;
+    }
+    
+    try {
+        pokemonListEl.innerHTML = '<div class="loading">Searching Pokémon...</div>';
+        paginationEl.innerHTML = '';
+        
+        const searchName = searchTerm.toLowerCase().trim();
+        
+        // Try to fetch the specific Pokemon
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${searchName}`);
+            
+            if (response.ok) {
+                const pokemonData = await response.json();
+                // Display single result
+                const singleResult = {
+                    name: pokemonData.name,
+                    url: `https://pokeapi.co/api/v2/pokemon/${pokemonData.id}/`
+                };
+                displayPokemonList([singleResult]);
+                isSearchMode = true;
+                searchResults = [singleResult];
+                clearSearchBtnEl.classList.remove('hidden');
+                closePokemonDetail();
+                return;
+            }
+        } catch (error) {
+            // If specific Pokemon not found, try searching through list
+        }
+        
+        // If exact match not found, search through the list
+        // Fetch a large number of Pokemon to search through
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0`);
+        const data = await response.json();
+        
+        // Filter Pokemon by name
+        const filtered = data.results.filter(pokemon => 
+            pokemon.name.toLowerCase().includes(searchName)
+        );
+        
+        if (filtered.length === 0) {
+            pokemonListEl.innerHTML = '<div class="error">No Pokémon found matching your search.</div>';
+            isSearchMode = false;
+            clearSearchBtnEl.classList.add('hidden');
+        } else {
+            displayPokemonList(filtered);
+            isSearchMode = true;
+            searchResults = filtered;
+            clearSearchBtnEl.classList.remove('hidden');
+            closePokemonDetail();
+        }
+    } catch (error) {
+        pokemonListEl.innerHTML = `<div class="error">Error searching Pokémon: ${error.message}</div>`;
+        console.error('Error searching Pokémon:', error);
+    }
+}
+
+// Clear search and return to normal view
+function clearSearch() {
+    searchInputEl.value = '';
+    isSearchMode = false;
+    searchResults = [];
+    clearSearchBtnEl.classList.add('hidden');
+    closePokemonDetail();
+    
+    // Reload the initial page
+    goToPage(1);
+}
+
+// Event listeners for search
+searchBtnEl.addEventListener('click', () => {
+    const searchTerm = searchInputEl.value;
+    searchPokemon(searchTerm);
+});
+
+searchInputEl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const searchTerm = searchInputEl.value;
+        searchPokemon(searchTerm);
+    }
+});
+
+clearSearchBtnEl.addEventListener('click', clearSearch);
 
 // Initialize app
 async function init() {

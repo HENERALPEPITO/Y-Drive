@@ -14,6 +14,17 @@
         </header>
 
         <main>
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input" 
+                    placeholder="Search Pokémon by name..."
+                    autocomplete="off"
+                >
+                <button id="search-btn" class="search-btn">Search</button>
+                <button id="clear-search-btn" class="clear-search-btn hidden">Clear</button>
+            </div>
             <div id="pokemon-list" class="pokemon-list">
                 <div class="loading">Loading Pokémon...</div>
             </div>
